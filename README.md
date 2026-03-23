@@ -2,7 +2,7 @@
    <img width="170" height="170" src="/assets/editlogo.png" alt="Logo">
 </div>
 <div align="center">
-  <h1><b>StudioRMDL</b></h1>
+  <h1><b>RMDLEdit</b></h1>
   <p><i>A GUI model data editer for Apex Legends Season 3 Models (RMDL v54 subversion 10) for <a href="https://discord.gg/wVsudEruAx">R5Valkyrie</a>.</i></p>
 </div>
 
