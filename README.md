@@ -14,3 +14,30 @@
 
 ## Usage
 todo
+
+<div align="center">
+  <h3><b>My Other Projects</b></h3>
+</div>
+<div align="center">
+
+<table>
+<tr>
+
+<td align="center" width="170">
+  <a href="https://github.com/WateryContinent/studiormdl">
+    <img src="/assets/studiologo.png" width="80" height="80"><br>
+    <b>StudioRMDL</b><br>
+  </a>
+</td>
+
+<td align="center" width="170">
+  <a href="https://github.com/WateryContinent/bonejig">
+    <img src="/assets/jiglogo.png" width="80" height="80"><br>
+    <b>BoneJig</b><br>
+  </a>
+</td>
+
+</tr>
+</table>
+
+</div>
