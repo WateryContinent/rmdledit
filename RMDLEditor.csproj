@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyTitle>RMDLEdit</AssemblyTitle>
+    <AssemblyDescription>Editor for Apex Legends RMDL v10 (studio version 54) files</AssemblyDescription>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="editlogo.png" Condition="Exists('editlogo.png')" />
+    <EmbeddedResource Include="icon.png"     Condition="Exists('icon.png')" />
+  </ItemGroup>
+</Project>
