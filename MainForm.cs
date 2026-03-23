@@ -251,7 +251,7 @@ namespace RMDLEditor
         private readonly MenuStrip              _menu        = new();
         private readonly StatusStrip            _status      = new();
         private readonly ToolStripStatusLabel   _statusLabel = new();
-        private readonly TabControl             _tabs        = new();
+        private readonly ThemedTabControl       _tabs        = new();
 
         // Header tab
         private readonly TabPage      _tabHeader    = new TabPage("Header");
@@ -448,7 +448,9 @@ namespace RMDLEditor
             _statusLabel.ForeColor = text;
 
             // ── Tabs ─────────────────────────────────────────────────────────
+            _tabs.IsDark    = dark;
             _tabs.BackColor = surface;
+            _tabs.Invalidate();
             foreach (TabPage tp in _tabs.TabPages)
             {
                 tp.BackColor = surface;
