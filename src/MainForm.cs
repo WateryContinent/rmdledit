@@ -279,6 +279,19 @@ namespace RMDLEditor
         private readonly TabPage      _tabBones     = new TabPage("Bones");
         private readonly DataGridView _boneGrid     = new();
 
+        // Decompile tab
+        private readonly TabPage     _tabDecompile = new TabPage("Decompile");
+        private readonly TextBox     _decompFileBox = new();
+        private readonly TextBox     _decompOutBox  = new();
+        private readonly Button      _decompFileBtn = new() { Text = "Browse…", FlatStyle = FlatStyle.Flat };
+        private readonly Button      _decompOutBtn  = new() { Text = "Browse…", FlatStyle = FlatStyle.Flat };
+        private readonly Button      _decompBtn     = new() { Text = "Decompile", FlatStyle = FlatStyle.Flat };
+        private readonly RichTextBox _decompLog     = new();
+
+        // Preview tab
+        private readonly TabPage          _tabPreview = new TabPage("Preview");
+        private readonly MeshPreviewControl _preview  = new();
+
         // ── State ───────────────────────────────────────────────────────────
         private RMDLFile? _rmdl;
         private bool      _dirty;
@@ -307,6 +320,8 @@ namespace RMDLEditor
             BuildBodyPartsTab();
             BuildRuiTab();
             BuildBonesTab();
+            BuildDecompileTab();
+            BuildPreviewTab();
 
             Controls.Add(_tabs);
             Controls.Add(_menu);
@@ -391,12 +406,16 @@ namespace RMDLEditor
             _tabs.TabPages.Add(_tabBodyParts);
             _tabs.TabPages.Add(_tabRui);
             _tabs.TabPages.Add(_tabBones);
+            _tabs.TabPages.Add(_tabPreview);
         }
 
         private void SetTabsEnabled(bool en)
         {
             foreach (TabPage tp in _tabs.TabPages)
+            {
+                if (tp == _tabPreview) continue; // always accessible
                 tp.Enabled = en;
+            }
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -488,6 +507,9 @@ namespace RMDLEditor
             foreach (TabPage tp in _tabs.TabPages)
                 ApplyControlsTheme(tp.Controls, bg, surface, elevated, border, text, textDim, sel, selText);
 
+            // ── Preview control ───────────────────────────────────────────────
+            _preview.ApplyTheme(dark);
+
             Invalidate(true);
         }
 
@@ -543,6 +565,14 @@ namespace RMDLEditor
                         btn.ForeColor = text;
                         btn.FlatStyle = FlatStyle.Flat;
                         btn.FlatAppearance.BorderColor = border;
+                        break;
+                    case RichTextBox rtb:
+                        rtb.BackColor = surface;
+                        rtb.ForeColor = text;
+                        break;
+                    case CheckedListBox clb:
+                        clb.BackColor = surface;
+                        clb.ForeColor = text;
                         break;
                     case TextBox tb:
                         tb.BackColor = surface;
@@ -1016,6 +1046,7 @@ namespace RMDLEditor
                 SetStatus($"Loaded: {path}   ({_rmdl.RawData.Length:N0} bytes)");
                 SetTabsEnabled(true);
                 PopulateAllTabs();
+                try { _preview.LoadMesh(_rmdl); } catch { }
             }
             catch (Exception ex)
             {
@@ -1076,6 +1107,180 @@ namespace RMDLEditor
         }
 
         // ─────────────────────────────────────────────────────────────────────
+        //  Decompile tab
+        // ─────────────────────────────────────────────────────────────────────
+        private void BuildDecompileTab()
+        {
+            _tabDecompile.Padding = new Padding(8);
+
+            // ── Input table (file + output folder rows) ───────────────────────
+            var table = new TableLayoutPanel
+            {
+                Dock        = DockStyle.Top,
+                ColumnCount = 3,
+                RowCount    = 2,
+                Height      = 76,
+                Padding     = new Padding(8, 10, 8, 4),
+                CellBorderStyle = TableLayoutPanelCellBorderStyle.None
+            };
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 108));
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90));
+            table.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
+            table.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
+
+            var lblFile = new Label { Text = "RMDL file:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
+            _decompFileBox.Dock             = DockStyle.Fill;
+            _decompFileBox.PlaceholderText  = "Select an RMDL v10 file…";
+            _decompFileBox.TextChanged     += (s, e) => AutoFillOutputDir();
+            _decompFileBtn.Dock             = DockStyle.Fill;
+            _decompFileBtn.Click           += OnDecompFileBrowse;
+
+            var lblOut = new Label { Text = "Output folder:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
+            _decompOutBox.Dock            = DockStyle.Fill;
+            _decompOutBox.PlaceholderText = "Default: <exe>/decompiled/<model name>/";
+            _decompOutBtn.Dock            = DockStyle.Fill;
+            _decompOutBtn.Click          += OnDecompOutBrowse;
+
+            table.Controls.Add(lblFile,       0, 0);
+            table.Controls.Add(_decompFileBox, 1, 0);
+            table.Controls.Add(_decompFileBtn, 2, 0);
+            table.Controls.Add(lblOut,         0, 1);
+            table.Controls.Add(_decompOutBox,  1, 1);
+            table.Controls.Add(_decompOutBtn,  2, 1);
+
+            // ── Decompile button row ──────────────────────────────────────────
+            var btnPanel = new Panel { Dock = DockStyle.Top, Height = 46 };
+            _decompBtn.Location  = new Point(8, 8);
+            _decompBtn.Size      = new Size(130, 30);
+            _decompBtn.Click    += OnDecompileExecute;
+            btnPanel.Controls.Add(_decompBtn);
+
+            // ── Log output ────────────────────────────────────────────────────
+            _decompLog.Dock        = DockStyle.Fill;
+            _decompLog.ReadOnly    = true;
+            _decompLog.Font        = new Font("Consolas", 9f);
+            _decompLog.ScrollBars  = RichTextBoxScrollBars.Vertical;
+            _decompLog.BorderStyle = BorderStyle.FixedSingle;
+            _decompLog.WordWrap    = false;
+
+            // Controls added bottom-to-top (Fill before Top panels)
+            _tabDecompile.Controls.Add(_decompLog);
+            _tabDecompile.Controls.Add(btnPanel);
+            _tabDecompile.Controls.Add(table);
+        }
+
+        private void BuildPreviewTab()
+        {
+            _preview.Dock = DockStyle.Fill;
+            _tabPreview.Controls.Add(_preview);
+        }
+
+        private void AutoFillOutputDir()
+        {
+            string path = _decompFileBox.Text.Trim();
+            if (string.IsNullOrEmpty(path)) return;
+
+            // Only auto-fill if the output box is empty or still matches the
+            // previously auto-generated path (i.e. user hasn't customised it).
+            string name       = Path.GetFileNameWithoutExtension(path);
+            string autoPath   = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "decompiled", name);
+            string currentOut = _decompOutBox.Text.Trim();
+
+            if (string.IsNullOrEmpty(currentOut) ||
+                currentOut.StartsWith(
+                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "decompiled"),
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                _decompOutBox.Text = autoPath;
+            }
+        }
+
+        private void OnDecompFileBrowse(object? s, EventArgs e)
+        {
+            using var dlg = new OpenFileDialog
+            {
+                Title  = "Select RMDL File",
+                Filter = "RMDL Files (*.rmdl)|*.rmdl|All Files (*.*)|*.*"
+            };
+            if (dlg.ShowDialog() != DialogResult.OK) return;
+            _decompFileBox.Text = dlg.FileName;
+        }
+
+        private void OnDecompOutBrowse(object? s, EventArgs e)
+        {
+            using var dlg = new FolderBrowserDialog
+            {
+                Description         = "Choose output folder",
+                UseDescriptionForTitle = true,
+                ShowNewFolderButton = true
+            };
+            if (!string.IsNullOrEmpty(_decompOutBox.Text))
+                dlg.InitialDirectory = _decompOutBox.Text;
+            if (dlg.ShowDialog() != DialogResult.OK) return;
+            _decompOutBox.Text = dlg.SelectedPath;
+        }
+
+        private void OnDecompileExecute(object? s, EventArgs e)
+        {
+            var warn = MessageBox.Show(
+                "The decompiler is unfinished and will likely not work correctly for complex models.\n\n" +
+                "Multi-weight skinning, LODs, and certain vertex formats may produce broken or missing geometry.\n\n" +
+                "Continue anyway?",
+                "Decompiler Warning",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+            if (warn != DialogResult.Yes) return;
+
+            string rmdlPath = _decompFileBox.Text.Trim();
+            if (string.IsNullOrEmpty(rmdlPath))
+            {
+                DecompLog("[Error] No RMDL file specified.");
+                return;
+            }
+            if (!File.Exists(rmdlPath))
+            {
+                DecompLog($"[Error] File not found: {rmdlPath}");
+                return;
+            }
+
+            string outDir = _decompOutBox.Text.Trim();
+            if (string.IsNullOrEmpty(outDir))
+            {
+                string mdlName = Path.GetFileNameWithoutExtension(rmdlPath);
+                outDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "decompiled", mdlName);
+            }
+
+            _decompLog.Clear();
+            DecompLog($"Loading {Path.GetFileName(rmdlPath)}…");
+
+            try
+            {
+                var rmdl = RMDLFile.Load(rmdlPath);
+                DecompLog($"  {rmdl.Header.NumBones} bone(s)  " +
+                           $"{rmdl.Header.NumBodyParts} body part(s)  " +
+                           $"{rmdl.Header.NumTextures} texture(s)");
+                DecompLog("Decompiling…");
+
+                string result = RMDLDecompiler.Decompile(rmdl, outDir);
+                DecompLog(result);
+                DecompLog("Done.");
+                SetStatus($"Decompiled → {outDir}");
+            }
+            catch (Exception ex)
+            {
+                DecompLog($"[Error] {ex.Message}");
+                SetStatus("Decompile failed.");
+            }
+        }
+
+        private void DecompLog(string msg)
+        {
+            _decompLog.AppendText(msg + Environment.NewLine);
+            _decompLog.ScrollToCaret();
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
         //  Edit actions
         // ─────────────────────────────────────────────────────────────────────
         private void OnCopyGuid(object? s, EventArgs e)
@@ -1132,8 +1337,8 @@ namespace RMDLEditor
             {
                 var asm = Assembly.GetExecutingAssembly();
                 // Try editlogo.png first, then icon.png
-                var stream = asm.GetManifestResourceStream("RMDLEditor.editlogo.png")
-                          ?? asm.GetManifestResourceStream("RMDLEditor.icon.png");
+                var stream = asm.GetManifestResourceStream("RMDLEditor.src.editlogo.png")
+                          ?? asm.GetManifestResourceStream("RMDLEditor.src.icon.png");
                 if (stream != null)
                 {
                     using (stream)
@@ -1229,8 +1434,8 @@ namespace RMDLEditor
             try
             {
                 var asm = Assembly.GetExecutingAssembly();
-                var stream = asm.GetManifestResourceStream("RMDLEditor.editlogo.png")
-                          ?? asm.GetManifestResourceStream("RMDLEditor.icon.png");
+                var stream = asm.GetManifestResourceStream("RMDLEditor.src.editlogo.png")
+                          ?? asm.GetManifestResourceStream("RMDLEditor.src.icon.png");
                 if (stream == null) return null;
                 using (stream)
                 using (var bmp = new Bitmap(stream))

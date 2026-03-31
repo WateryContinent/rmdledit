@@ -7,10 +7,20 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyTitle>RMDLEdit</AssemblyTitle>
     <AssemblyDescription>Editor for Apex Legends RMDL v10 (studio version 54) files</AssemblyDescription>
-    <ApplicationIcon>editlogo.ico</ApplicationIcon>
+    <ApplicationIcon>src\editlogo.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
-    <EmbeddedResource Include="editlogo.png" Condition="Exists('editlogo.png')" />
-    <EmbeddedResource Include="icon.png"     Condition="Exists('icon.png')" />
+    <EmbeddedResource Include="src\editlogo.png" Condition="Exists('src\editlogo.png')" />
+    <EmbeddedResource Include="src\icon.png" Condition="Exists('src\icon.png')" />
+    <None Include="src\editlogo.ico" Condition="Exists('src\editlogo.ico')" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Exclude reference sources and external tool sources from compilation -->
+    <Compile Remove="references\**" />
+    <Compile Remove="toolsource\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="OpenTK" Version="4.8.2" />
+    <PackageReference Include="OpenTK.WinForms" Version="4.0.0-pre.8" />
   </ItemGroup>
 </Project>
