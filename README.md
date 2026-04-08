@@ -11,8 +11,7 @@
 
 ## Features
 - **Editing of RMDL Data:** Allows for editing of data within an RMDL file's that would normally take a hex editor
-- **Decompilation of RMDLS:** Allows for decompilation of RMDL and VG files back into QC and SMD files ready for use with either StudioMDL or [StudioRMDL](https://github.com/WateryContinent/studiormdl)
-- **Preview of RMDLS:** Allows for previewing RMDL files, and loading of textures from the materials folder.
+- **Preview of RMDLS:** Allows for previewing RMDL files
 
 <div align="center">
   <h3><b>My Other Projects</b></h3>
